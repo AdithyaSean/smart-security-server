@@ -32,12 +32,12 @@ cd Enhanced-Security-Vision
 2. Create and activate a virtual environment:
 ```sh
 # On Linux/macOS
-python -m venv venv
-source venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate
 
 # On Windows
-python -m venv venv
-venv\Scripts\activate
+python -m venv .venv
+.venv\Scripts\activate
 ```
 
 3. Install the dependencies:
