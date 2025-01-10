@@ -1,106 +1,117 @@
-Here's the updated README with the complete installation and usage instructions:
+# Smart Security System Server
 
-### README.md
+Real-time security monitoring using computer vision and ESP32 cameras.
 
-# Automated Home Security System
+## Key Features
+- 📹 Multi-camera monitoring with local network realtime tracking
+- 🔍 Motion detection via intensity changes
+- 👤 Face detection & enhancement with night vision capabilities
+- ☁️ Firebase cloud integration for remote access
+- 💾 Local image storage (faces)
+- 🚨 Real-time alerts and notifications
+- 📊 Activity logging and analytics
 
-Automated Home Security System is a Python project that utilizes computer vision techniques to detect changes in intensity and faces in images captured from a network camera through URL. It also enhances the detected faces using various image processing techniques like contrast enhancement and sharpening.
+## System Overview
 
-## Features
+The Smart Security System provides comprehensive monitoring through:
+1. **Network Camera Integration**: Automatically discovers and connects to ESP32 cameras on the local network
+2. **Real-time Processing**: Analyzes video streams for motion and faces
+3. **Enhanced Security**: Stores and processes images locally while maintaining cloud backups
+4. **Intelligent Alerts**: Notifies users of significant events with processed images
 
-- Real-time network camera monitoring
-- Intensity change detection
-- Face detection and segmentation
-- Image enhancement with night vision capabilities
-- Automatic saving of original and enhanced images
-- Firebase integration for cloud storage
+## Quick Start
 
-## Prerequisites
+### Smart-Security-Server Submodule
 
-Before you begin, ensure you have the following installed:
-- Python 3.8 or higher
-- A stable network connection
-- Git (for cloning the repository)
-
-## Setup
-
-1. Clone the repository:
-```sh
-git clone https://github.com/yourusername/Automated-Home-Security-System.git
-cd Automated-Home-Security-System
+1. Clone & setup:
+```bash
+git clone https://github.com/AdithyaSean/smart-security-server.git
+cd smart-security-server
+cp .env.example .env
+```
+or one liner command:
+```bash
+git clone https://github.com/AdithyaSean/smart-security-server.git && cd smart-security-server && cp .env.example .env
 ```
 
-2. Create a virtual environment and activate it:
-```sh
-# On macOS/Linux
+2. Configure `.env` with your Firebase credentials
+
+3. Install dependencies:
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
-
-# On Windows
-python -m venv .venv
-.venv\Scripts\activate
-```
-
-3. Install the dependencies:
-```sh
 pip install -r requirements.txt
 ```
 
-4. Configure Firebase:
-   - Copy `.env.example` to `.env`
-   - Update with your Firebase credentials and database URL
+4. Run the system:
+```sh
+./run.sh
+```
 
 ## Project Structure
 
 ```
 smart-security-server/
-├── src/
-│   ├── main.py             # Main monitoring script
-│   ├── enhance.py          # Image enhancement module
+├── src/                    # Core modules
+│   ├── main.py             # Main monitoring and coordination
+│   ├── enhance.py          # Image processing and enhancement
 │   ├── segment.py          # Face detection and segmentation
 │   ├── camera_scanner.py   # Network camera discovery
-│   └── firebase_service.py # Firebase integration
-├── firebase/               # Firebase credentials
-├── requirements.txt        # Project dependencies
-├── .env.example            # Environment variables template
-└── README.md               # Project documentation
+│   ├── firebase_service.py # Cloud storage integration
+│   └── shared_state.py     # Shared resources and state management
+├── templates/              # Web interface templates
+├── requirements.txt        # Python dependencies
+├── .env.example            # Configuration template
+├── run.sh                  # Startup script
+├── app.py                  # Flask web server and API endpoints
+└── README.md               # Documentation
 ```
 
-## Usage
+## Web Interface
 
-1. Make sure your ESP32 cameras are connected to the network and streaming.
+The system provides a Flask-based web interface with the following features:
+- Real-time video streaming from multiple cameras
+- Status monitoring of connected devices
+- Configuration interface for system settings
+- API endpoints for integration with other systems
 
-2. Run the main script:
-```sh
-python src/main.py
-```
+### API Endpoints
+- `/video_feed/<camera_id>`: Live video stream
+- `/status`: System status and health check
+- `/config`: System configuration management
+- `/events`: Security event history
 
-3. The program will:
-   - Scan network for ESP32 cameras
-   - Monitor multiple camera streams
-   - Detect intensity changes
-   - Perform face detection and enhancement
-   - Upload processed images to Firebase
-   - Store locally in organized directories:
-     - `original/`: Raw captured frames
-     - `segmented/`: Detected face segments
-     - `enhanced/`: Enhanced face images
+### app.py Features
+- Flask web server implementation
+- Video streaming using MJPEG
+- REST API for system control
+- WebSocket support for real-time updates
+- Integration with core security modules
 
-The system uses [`FirebaseService`](src/firebase_service.py) to handle cloud storage and [`camera_scanner`](src/camera_scanner.py) for automatic camera discovery.
+## Detailed Features
+
+### Real-time Monitoring
+- Continuous video stream analysis
+- Automatic camera discovery on local network
+- Multi-camera support with independent processing
+
+### Intelligent Detection
+- Motion detection through intensity changes
+- Face detection using advanced algorithms
+- Night vision enhancement for low-light conditions
+
+### Data Management
+- Local storage for detected faces images
+- Cloud backup through Firebase integration
+- Organized directory structure for easy access
 
 ## Troubleshooting
 
-1. If the video stream doesn't capture properly:
-   - Check if the network connection is stable
-   - Verify device permissions
-   - Try reconnecting the video source
-
-2. If face detection isn't working:
-   - Ensure proper lighting conditions
-   - Make sure faces are clearly visible
-   - Try adjusting your distance from the camera
+### Common Issues
+- **500 Errors**: Verify output directories exist and are writable
+- **Video Issues**: Check network connection and camera permissions
+- **Face Detection**: Ensure proper lighting and clear visibility
+- **Firebase Connection**: Verify credentials in .env file
 
 ## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
+MIT License - See [LICENSE](LICENSE)
