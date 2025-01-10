@@ -9,7 +9,7 @@ from src.shared_state import camera_streams, camera_caps, stop_event, put_frame
 from src.firebase_service import FirebaseService
 
 # Directory names
-directories_to_create = ["faces"]
+directories_to_create = ["faces", "secrets"]
 
 # Create directories if they don't exist
 for directory in directories_to_create:
