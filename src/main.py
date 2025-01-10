@@ -6,6 +6,7 @@ from segment import detect_faces
 from camera_scanner import scan_network_for_cameras
 import threading
 import time
+from firebase_service import FirebaseService
 
 # Directory names
 directories_to_create = ["original", "segmented", "enhanced"]
@@ -15,6 +16,7 @@ for directory in directories_to_create:
     os.makedirs(directory, exist_ok=True)
 
 def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event):
+    firebase_service = FirebaseService()
     cap = cv2.VideoCapture(camera_url)
     if not cap.isOpened():
         print(f"Error: Could not open video stream from camera {camera_id}")
@@ -39,7 +41,8 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             frame_path_original = f"original/cam{camera_id}_frame_{timestamp}_{frame_counter}.jpg"
             cv2.imwrite(frame_path_original, frame)
-            detect_faces(frame_path_original, intensity)
+            firebase_service.upload_image_data(frame_path_original, 'original', camera_id)
+            detect_faces(frame_path_original, intensity, camera_id)
 
         previous_intensity = intensity
 
