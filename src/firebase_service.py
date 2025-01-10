@@ -2,7 +2,6 @@ import firebase_admin
 from firebase_admin import credentials, db
 import base64
 import os
-from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,16 +18,11 @@ class FirebaseService:
             })
         self.db_ref = db.reference('faces')
         
-    def upload_image_data(self, image_path, image_type, camera_id):
-        if not os.path.exists(image_path):
-            raise ValueError("Image path does not exist")
-        if not isinstance(camera_id, (int, str)):
-            raise ValueError("Invalid camera_id type")
+    def upload_image_data(self, timestamp, camera_id, image_type, image_path):
         try:
             with open(image_path, 'rb') as image_file:
                 encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
                 
-            timestamp = datetime.now().isoformat()
             image_name = os.path.basename(image_path)
             
             data = {

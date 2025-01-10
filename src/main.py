@@ -24,7 +24,7 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
         return
 
     previous_intensity = None
-    frame_counter = 0
+    frame_count = 0
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     
     while not stop_event.is_set():
@@ -35,6 +35,7 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
             continue
 
         intensity = np.mean(frame)
+        frame_count += 1
 
         # Store frame in shared buffer for Flask server
         put_frame(camera_id, frame)
@@ -50,7 +51,7 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
                     print(f"Camera {camera_id} - Faces Detected - {detected_faces}")
                     face = frame[y:y+h, x:x+w]
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    face_filename = f"faces/camera_{camera_id}_face_{timestamp}.jpg"
+                    face_filename = f"faces/camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
                     cv2.imwrite(face_filename, face)
                     firebase_service.upload_image_data(face_filename, "face", camera_id)
 
