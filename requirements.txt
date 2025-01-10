@@ -2,3 +2,5 @@ opencv-python-headless
 numpy
 requests
 ipaddress
+firebase-admin
+python-dotenv

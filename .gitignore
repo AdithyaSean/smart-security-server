@@ -52,3 +52,6 @@ Thumbs.db
 # Jupyter Notebook
 .ipynb_checkpoints
 *.ipynb
+
+# Firebase
+firebase

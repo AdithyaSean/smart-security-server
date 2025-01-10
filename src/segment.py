@@ -1,9 +1,16 @@
 import os
 import cv2
 from enhance import enhance_image
-from night_vision import apply_night_vision
+from firebase_service import FirebaseService
 
-def detect_faces(image_path, intensity):
+def apply_night_vision(image):
+    # Apply CLAHE for better contrast in dark areas
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+
+    return clahe.apply(image)
+
+def detect_faces(image_path, intensity, camera_id):
+    firebase_service = FirebaseService()
     upscale_factor = 2
     intensity_threshold = 50
     image = cv2.imread(image_path)
@@ -28,6 +35,12 @@ def detect_faces(image_path, intensity):
             # Enhance the cropped face image and save it
             enhanced_face_path = face_image_path.replace('_face.jpg', '_enhanced_face.jpg')
             enhance_image(face_image_path, enhanced_face_path)
+
+            # Upload original face to Firebase
+            firebase_service.upload_image_data(face_image_path, 'segmented', camera_id)
+            
+            # Upload enhanced face to Firebase
+            firebase_service.upload_image_data(enhanced_face_path, 'enhanced', camera_id)
 
         print("Faces detected and enhanced successfully!")
     else:
