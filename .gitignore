@@ -39,9 +39,7 @@ ENV/
 *.sublime-project
 
 # Project specific output directories
-original/
-segmented/
-enhanced/
+faces/
 
 # OS specific files
 .DS_Store
@@ -55,3 +53,4 @@ Thumbs.db
 
 # Firebase
 firebase
+secrets

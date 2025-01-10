@@ -17,7 +17,7 @@ class FirebaseService:
             firebase_admin.initialize_app(self.cred, {
                 'databaseURL': db_url
             })
-        self.db_ref = db.reference('images')
+        self.db_ref = db.reference('faces')
         
     def upload_image_data(self, image_path, image_type, camera_id):
         if not os.path.exists(image_path):

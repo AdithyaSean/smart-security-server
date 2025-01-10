@@ -2,15 +2,14 @@ import os
 import cv2
 from datetime import datetime
 import numpy as np
-from src.segment import detect_faces
-from src.camera_scanner import scan_network_for_cameras
 import threading
 import time
-from src.firebase_service import FirebaseService
+from src.camera_scanner import get_camera_urls
 from src.shared_state import camera_streams, camera_caps, stop_event, put_frame
+from src.firebase_service import FirebaseService
 
 # Directory names
-directories_to_create = ["original", "segmented", "enhanced"]
+directories_to_create = ["faces"]
 
 # Create directories if they don't exist
 for directory in directories_to_create:
@@ -26,6 +25,7 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
 
     previous_intensity = None
     frame_counter = 0
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     
     while not stop_event.is_set():
         ret, frame = cap.read()
@@ -34,21 +34,30 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
             time.sleep(1)
             continue
 
+        fps = cap.get(cv2.CAP_PROP_FPS)
         intensity = np.mean(frame)
-        print(f"Camera {camera_id} Intensity:", int(intensity))
+        print(f"Camera {camera_id} - Intensity: {intensity:.2f}, FPS: {fps:.2f}")
 
         # Store frame in shared buffer for Flask server
         put_frame(camera_id, frame)
 
-        # Save frame only if faces are detected
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        frame_path_original = f"original/cam{camera_id}_frame_{timestamp}_{frame_counter}.jpg"
-        cv2.imwrite(frame_path_original, frame)
-        
-        # Check for faces and process if found
-        if detect_faces(frame_path_original, intensity, camera_id):
-            frame_counter += 1
-            firebase_service.upload_image_data(frame_path_original, 'original', camera_id)
+        # Check for significant intensity change
+        if previous_intensity is not None and abs(intensity - previous_intensity) > 1:
+            print(f"Camera {camera_id} - Detected intensity change")
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+            if len(faces) > 0:
+                print(f"Camera {camera_id} - Detected {len(faces)} faces")
+
+            for (x, y, w, h) in faces:
+                face = frame[y:y+h, x:x+w]
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                face_filename = f"faces/camera_{camera_id}_face_{timestamp}.jpg"
+                cv2.imwrite(face_filename, face)
+                firebase_service.upload_image_data(face_filename, "face", camera_id)
+
+        previous_intensity = intensity
 
     cap.release()
     print(f"Camera {camera_id} released.")
@@ -57,18 +66,13 @@ def main():
     global stop_event
     stop_event = threading.Event()  # Initialize stop_event
 
-    # Scan for cameras
-    print("Scanning for ESP32 cameras...")
-    camera_urls = scan_network_for_cameras()
+    # Get camera URLs, trying last known IPs first, then scanning if necessary
+    print("Getting ESP32-cam URLs...")
+    camera_urls = get_camera_urls()
     
     if len(camera_urls) < 2:
         print(f"Error: Found only {len(camera_urls)} cameras. Need at least 2.")
-        # Fallback to known camera IPs if scan fails
-        print("Falling back to known camera IPs...")
-        camera_urls = [
-            "http://192.168.1.7:81/stream",
-            "http://192.168.1.8:81/stream"
-        ]
+        return
     
     # Populate camera_streams and initialize camera_caps
     for i, camera_url in enumerate(camera_urls[:2], 1):

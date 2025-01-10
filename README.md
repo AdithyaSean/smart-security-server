@@ -7,7 +7,7 @@ Real-time security monitoring using computer vision and ESP32 cameras.
 - 🔍 Motion detection via intensity changes
 - 👤 Face detection & enhancement with night vision capabilities
 - ☁️ Firebase cloud integration for remote access
-- 💾 Local image storage (original/segmented/enhanced)
+- 💾 Local image storage (faces)
 - 🚨 Real-time alerts and notifications
 - 📊 Activity logging and analytics
 
@@ -101,7 +101,7 @@ The system provides a Flask-based web interface with the following features:
 - Night vision enhancement for low-light conditions
 
 ### Data Management
-- Local storage of original and processed images
+- Local storage for detected faces images
 - Cloud backup through Firebase integration
 - Organized directory structure for easy access
 

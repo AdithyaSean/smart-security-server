@@ -35,7 +35,12 @@ def video_feed(camera_id):
                         mimetype='multipart/x-mixed-replace; boundary=frame')
     return "Camera not found", 404
 
-def find_free_port():
+# Find a free port for the Flask server if port 2003 or 4620 is already in use
+def find_free_port(preferred_ports=[2003, 4620]):
+    for port in preferred_ports:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(('0.0.0.0', port)) != 0:
+                return port
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('0.0.0.0', 0))
         return s.getsockname()[1]
