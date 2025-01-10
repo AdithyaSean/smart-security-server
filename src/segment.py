@@ -1,7 +1,8 @@
 import os
 import cv2
-from enhance import enhance_image
-from firebase_service import FirebaseService
+from pathlib import Path
+from src.enhance import enhance_image
+from src.firebase_service import FirebaseService
 
 def apply_night_vision(image):
     # Apply CLAHE for better contrast in dark areas
@@ -9,7 +10,7 @@ def apply_night_vision(image):
 
     return clahe.apply(image)
 
-def detect_faces(image_path, intensity, camera_id):
+def detect_faces(image_path, intensity, camera_id) -> bool:
     firebase_service = FirebaseService()
     upscale_factor = 2
     intensity_threshold = 50
@@ -28,20 +29,33 @@ def detect_faces(image_path, intensity, camera_id):
 
             upscaled_face = cv2.resize(face, (w * upscale_factor, h * upscale_factor), interpolation=cv2.INTER_LINEAR)
 
-            # Path for saving the enhanced face image
-            face_image_path = os.path.splitext(image_path)[0].replace('original', 'segmented') + '_face.jpg'
-            cv2.imwrite(face_image_path, upscaled_face)
+            try:
+                # Path for saving the enhanced face image
+                face_image_path = os.path.splitext(image_path)[0].replace('original', 'segmented') + '_face.jpg'
+                cv2.imwrite(face_image_path, upscaled_face)
+                
+                if not os.path.exists(face_image_path):
+                    raise FileNotFoundError(f"Failed to save face image: {face_image_path}")
 
-            # Enhance the cropped face image and save it
-            enhanced_face_path = face_image_path.replace('_face.jpg', '_enhanced_face.jpg')
-            enhance_image(face_image_path, enhanced_face_path)
+                # Enhance the cropped face image and save it
+                enhanced_face_path = face_image_path.replace('_face.jpg', '_enhanced_face.jpg')
+                enhance_image(face_image_path, enhanced_face_path)
+                
+                if not os.path.exists(enhanced_face_path):
+                    raise FileNotFoundError(f"Failed to save enhanced face image: {enhanced_face_path}")
 
-            # Upload original face to Firebase
-            firebase_service.upload_image_data(face_image_path, 'segmented', camera_id)
-            
-            # Upload enhanced face to Firebase
-            firebase_service.upload_image_data(enhanced_face_path, 'enhanced', camera_id)
+                # Upload original face to Firebase
+                firebase_service.upload_image_data(face_image_path, 'segmented', camera_id)
+                
+                # Upload enhanced face to Firebase
+                firebase_service.upload_image_data(enhanced_face_path, 'enhanced', camera_id)
+                
+            except Exception as e:
+                print(f"Error processing face: {str(e)}")
+                continue
 
         print("Faces detected and enhanced successfully!")
+        return True
     else:
         print("No faces detected.")
+        return False

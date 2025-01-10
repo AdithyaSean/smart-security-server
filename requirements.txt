@@ -4,3 +4,4 @@ requests
 ipaddress
 firebase-admin
 python-dotenv
+Flask

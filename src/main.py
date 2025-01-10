@@ -2,11 +2,12 @@ import os
 import cv2
 from datetime import datetime
 import numpy as np
-from segment import detect_faces
-from camera_scanner import scan_network_for_cameras
+from src.segment import detect_faces
+from src.camera_scanner import scan_network_for_cameras
 import threading
 import time
-from firebase_service import FirebaseService
+from src.firebase_service import FirebaseService
+from src.shared_state import camera_streams, camera_caps, stop_event, put_frame
 
 # Directory names
 directories_to_create = ["original", "segmented", "enhanced"]
@@ -16,6 +17,7 @@ for directory in directories_to_create:
     os.makedirs(directory, exist_ok=True)
 
 def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event):
+    camera_streams[camera_id] = camera_url  # Store camera URL globally
     firebase_service = FirebaseService()
     cap = cv2.VideoCapture(camera_url)
     if not cap.isOpened():
@@ -35,21 +37,26 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
         intensity = np.mean(frame)
         print(f"Camera {camera_id} Intensity:", int(intensity))
 
-        if previous_intensity is not None and abs(intensity - previous_intensity) >= 2:
-            print(f"Change in intensity detected on camera {camera_id}!")
-            frame_counter += 1
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            frame_path_original = f"original/cam{camera_id}_frame_{timestamp}_{frame_counter}.jpg"
-            cv2.imwrite(frame_path_original, frame)
-            firebase_service.upload_image_data(frame_path_original, 'original', camera_id)
-            detect_faces(frame_path_original, intensity, camera_id)
+        # Store frame in shared buffer for Flask server
+        put_frame(camera_id, frame)
 
-        previous_intensity = intensity
+        # Save frame only if faces are detected
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        frame_path_original = f"original/cam{camera_id}_frame_{timestamp}_{frame_counter}.jpg"
+        cv2.imwrite(frame_path_original, frame)
+        
+        # Check for faces and process if found
+        if detect_faces(frame_path_original, intensity, camera_id):
+            frame_counter += 1
+            firebase_service.upload_image_data(frame_path_original, 'original', camera_id)
 
     cap.release()
     print(f"Camera {camera_id} released.")
 
 def main():
+    global stop_event
+    stop_event = threading.Event()  # Initialize stop_event
+
     # Scan for cameras
     print("Scanning for ESP32 cameras...")
     camera_urls = scan_network_for_cameras()
@@ -63,8 +70,16 @@ def main():
             "http://192.168.1.8:81/stream"
         ]
     
+    # Populate camera_streams and initialize camera_caps
+    for i, camera_url in enumerate(camera_urls[:2], 1):
+        camera_streams[i] = camera_url
+        cap = cv2.VideoCapture(camera_url)
+        if not cap.isOpened():
+            print(f"Error: Could not open video stream from camera {i}")
+        else:
+            camera_caps[i] = cap
+
     # Create threads for each camera
-    stop_event = threading.Event()
     threads = []
     
     try:
