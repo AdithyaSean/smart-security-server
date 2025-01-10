@@ -97,5 +97,7 @@ def get_camera_urls():
     if camera_urls:
         new_ips = [url.split("//")[1].split(":")[0] for url in camera_urls]
         save_last_known_ips(new_ips)
+        print(f"Found {len(camera_urls)} cameras: {camera_urls}")
+
 
     return camera_urls

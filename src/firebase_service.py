@@ -3,39 +3,34 @@ from firebase_admin import credentials, db
 import base64
 import os
 from dotenv import load_dotenv
+import logging
 
-load_dotenv()
-
-class FirebaseService:
-    def __init__(self, credential_path=os.getenv('FIREBASE_CRED_PATH')):
-        self.cred = credentials.Certificate(credential_path)
-        db_url = os.getenv('FIREBASE_DB_URL')
-        if not db_url:
-            raise ValueError("FIREBASE_DB_URL environment variable is not set.")
-        if not firebase_admin._apps:
-            firebase_admin.initialize_app(self.cred, {
-                'databaseURL': db_url
-            })
-        self.db_ref = db.reference('faces')
+def init_firebase():
+    load_dotenv()
+    db_url = os.getenv("FIREBASE_DB_URL")
+    if not db_url:
+        raise ValueError("FIREBASE_DB_URL not found in environment variables")
         
-    def upload_image_data(self, timestamp, camera_id, image_type, image_path):
-        try:
-            with open(image_path, 'rb') as image_file:
-                encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
-                
-            image_name = os.path.basename(image_path)
-            
+    cred = credentials.Certificate("firebase/smart-security-project-firebase-adminsdk.json")
+    firebase_admin.initialize_app(cred, {
+        'databaseURL': db_url
+    })
+    return db.reference('faces')
+
+def upload_image_data(timestamp, camera_id, image_type, image_path):
+    try:
+        with open(image_path, 'rb') as f:
             data = {
                 'timestamp': timestamp,
                 'camera_id': camera_id,
                 'image_type': image_type,
-                'image_data': encoded_image,
-                'local_path': image_path,
-                'image_name': image_name
+                'image_data': base64.b64encode(f.read()).decode('utf-8'),
+                'image_name': os.path.basename(image_path)
             }
-            
-            self.db_ref.child(f'camera_{camera_id}').push(data)
-            return True
-        except Exception as e:
-            print(f"Firebase upload error: {str(e)}")
-            return False
+        ref = db.reference('faces').child(f'camera_{camera_id}')
+        ref.push(data)
+        os.remove(image_path)  # Cleanup after upload
+        return True
+    except Exception as e:
+        logging.error(f"Firebase upload error: {e}")
+        return False
