@@ -34,28 +34,25 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
             time.sleep(1)
             continue
 
-        fps = cap.get(cv2.CAP_PROP_FPS)
         intensity = np.mean(frame)
-        print(f"Camera {camera_id} - Intensity: {intensity:.2f}, FPS: {fps:.2f}")
 
         # Store frame in shared buffer for Flask server
         put_frame(camera_id, frame)
 
         # Check for significant intensity change
-        if previous_intensity is not None and abs(intensity - previous_intensity) > 1:
-            print(f"Camera {camera_id} - Detected intensity change")
+        if previous_intensity is not None and abs(intensity - previous_intensity) > 1.0:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+            faces = face_cascade.detectMultiScale(gray)
+            detected_faces = len(faces)
 
-            if len(faces) > 0:
-                print(f"Camera {camera_id} - Detected {len(faces)} faces")
-
-            for (x, y, w, h) in faces:
-                face = frame[y:y+h, x:x+w]
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                face_filename = f"faces/camera_{camera_id}_face_{timestamp}.jpg"
-                cv2.imwrite(face_filename, face)
-                firebase_service.upload_image_data(face_filename, "face", camera_id)
+            if detected_faces > 0:
+                for (x, y, w, h) in faces:
+                    print(f"Camera {camera_id} - Faces Detected - {detected_faces}")
+                    face = frame[y:y+h, x:x+w]
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    face_filename = f"faces/camera_{camera_id}_face_{timestamp}.jpg"
+                    cv2.imwrite(face_filename, face)
+                    firebase_service.upload_image_data(face_filename, "face", camera_id)
 
         previous_intensity = intensity
 
