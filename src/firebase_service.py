@@ -26,8 +26,14 @@ def upload_image_data(face_image, image_type, camera_id, timestamp, print_messag
                 'image_name': face_image,
                 'timestamp': timestamp
             }
-        ref = db.reference('faces').child(f'camera_{camera_id}')
-        ref.push(data)
+        
+        # Extract the file name without the path and extension
+        file_name = os.path.splitext(os.path.basename(face_image))[0]
+        
+        # Use the file name as the key
+        ref = db.reference('faces').child(f'camera_{camera_id}').child(file_name)
+        ref.set(data)
+        
         print(print_message + f"Uploaded")
         return True
     except Exception as e:
