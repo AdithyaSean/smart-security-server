@@ -64,12 +64,12 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
                     print(f"Camera {camera_id} - Faces Detected - {detected_faces}")
                     face = frame[y:y+h, x:x+w]
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    face_filename = f"faces/camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
-                    cv2.imwrite(face_filename, face)
+                    face_image = f"faces/camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
+                    cv2.imwrite(face_image, face)
                     
                     # Upload only if the interval has passed
                     if time.time() - last_upload_time > upload_interval:
-                        upload_image_data(face_filename, "face", camera_id)
+                        upload_image_data(face_image, "face", camera_id)
                         last_upload_time = time.time()
 
         previous_intensity = intensity
