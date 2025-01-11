@@ -103,6 +103,7 @@ def main():
     with ThreadPoolExecutor(max_workers=2) as executor:
         try:
             futures = [executor.submit(process_camera, camera_url, i, stop_event) for i, camera_url in enumerate(camera_urls[:2], 1)]
+            print("All cameras started.")
             
             # Wait for KeyboardInterrupt
             while True:
