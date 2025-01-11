@@ -69,7 +69,7 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
                     
                     # Upload only if the interval has passed
                     if time.time() - last_upload_time > upload_interval:
-                        upload_image_data(face_image, "face", camera_id)
+                        upload_image_data(face_image, "face", camera_id, timestamp)
                         last_upload_time = time.time()
 
         previous_intensity = intensity

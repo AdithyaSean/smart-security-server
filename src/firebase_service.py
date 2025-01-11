@@ -3,7 +3,6 @@ from firebase_admin import credentials, db
 import base64
 import os
 from dotenv import load_dotenv
-import logging
 
 def init_firebase():
     load_dotenv()
@@ -17,19 +16,20 @@ def init_firebase():
     })
     return db.reference('faces')
 
-def upload_image_data(timestamp, camera_id, image_type, face_image):
+def upload_image_data(face_image, image_type, camera_id, timestamp):
     try:
         with open(face_image, 'rb') as f:
             data = {
-                'timestamp': timestamp,
                 'camera_id': camera_id,
                 'image_type': image_type,
                 'image_data': base64.b64encode(f.read()).decode('utf-8'),
-                'image_name': os.path.basename(face_image)
+                'image_name': os.path.basename(face_image),
+                'timestamp': timestamp
             }
         ref = db.reference('faces').child(f'camera_{camera_id}')
         ref.push(data)
+        print(f"Uploaded image data for camera {camera_id}")
         return True
     except Exception as e:
-        logging.error(f"Firebase upload error: {e}")
+        print(f"Firebase upload error: {e}")
         return False
