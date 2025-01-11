@@ -16,19 +16,19 @@ def init_firebase():
     })
     return db.reference('faces')
 
-def upload_image_data(face_image, image_type, camera_id, timestamp):
+def upload_image_data(face_image, image_type, camera_id, timestamp, print_message):
     try:
         with open(face_image, 'rb') as f:
             data = {
                 'camera_id': camera_id,
                 'image_type': image_type,
                 'image_data': base64.b64encode(f.read()).decode('utf-8'),
-                'image_name': os.path.basename(face_image),
+                'image_name': face_image,
                 'timestamp': timestamp
             }
         ref = db.reference('faces').child(f'camera_{camera_id}')
         ref.push(data)
-        print(f"Uploaded image data for camera {camera_id}")
+        print(print_message + f"Uploaded")
         return True
     except Exception as e:
         print(f"Firebase upload error: {e}")
