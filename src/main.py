@@ -37,6 +37,9 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
     upload_interval = 60  # Upload every 60 seconds
     last_upload_time = time.time()
 
+    # Create a ThreadPoolExecutor for Firebase uploads
+    upload_executor = ThreadPoolExecutor(max_workers=2)
+
     while not stop_event.is_set():
         ret, frame = cap.read()
         if not ret:
@@ -66,11 +69,7 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     face_image = f"faces/camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
                     cv2.imwrite(face_image, face)
-                    
-                    # Upload only if the interval has passed
-                    if time.time() - last_upload_time > upload_interval:
-                        upload_image_data(face_image, "face", camera_id, timestamp)
-                        last_upload_time = time.time()
+                    upload_image_data(face_image, "face", camera_id, timestamp)
 
         previous_intensity = intensity
 
@@ -84,11 +83,11 @@ def main():
     # Get camera URLs, trying last known IPs first, then scanning if necessary
     print("Getting ESP32-cam URLs...")
     camera_urls = get_camera_urls()
-    
+
     if len(camera_urls) < 2:
         print(f"Error: Found only {len(camera_urls)} cameras. Need at least 2.")
         return
-    
+
     # Populate camera_streams and initialize camera_caps
     for i, camera_url in enumerate(camera_urls[:2], 1):
         camera_streams[i] = camera_url
