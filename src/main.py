@@ -113,10 +113,18 @@ def main():
             print("\nProgram interrupted by user. Shutting down...")
             stop_event.set()
             
-            # Wait for threads to finish
+            # Wait for threads to finish with a timeout
             for future in futures:
-                future.result(timeout=5)  # Add a timeout to avoid hanging indefinitely
+                try:
+                    future.result(timeout=10)  # Increase timeout to 10 seconds
+                except Exception as e:
+                    print(f"Error waiting for thread: {e}")
+            
             print("All cameras released. Exiting...")
+        finally:
+            # Ensure the executor is shut down
+            executor.shutdown(wait=True)
+            print("Executor shut down.")
 
 if __name__ == "__main__":
     main()
