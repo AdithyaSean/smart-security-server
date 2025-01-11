@@ -128,3 +128,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nProgram interrupted by user. Exiting...")
+        stop_event.set()
+        # Ensure the Flask server is stopped
+        os._exit(0)  # Forcefully exit the program to avoid hanging
