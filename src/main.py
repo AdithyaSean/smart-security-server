@@ -4,6 +4,7 @@ from datetime import datetime
 import numpy as np
 import threading
 import time
+import base64
 from concurrent.futures import ThreadPoolExecutor
 from src.camera_scanner import get_camera_urls
 from src.shared_state import camera_streams, camera_caps, stop_event, put_frame
@@ -28,10 +29,12 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
     cap.set(cv2.CAP_PROP_FPS, 5)
 
+    face_type = "face"
     previous_intensity = None
     frame_count = 0
     skip_frames = 5  # Process every 5th frame
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 70]
 
     while not stop_event.is_set():
         ret, frame = cap.read()
@@ -61,9 +64,17 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
                     face = frame[y:y+h, x:x+w]
                     timestamp = int(datetime.now().strftime("%Y%m%d%H%M%S"))
                     face_image = f"faces/camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
-                    cv2.imwrite(face_image, face)
+
+                    # Compress the face image in memory and convert to base64
+                    _, image_encoded = cv2.imencode('.jpg', face, encode_param)
+                    image_data = base64.b64encode(image_encoded).decode('utf-8')
+
                     print_message += f"Saved - {face_image} - "
-                    upload_image_data(face_image, "face", camera_id, timestamp, print_message)
+
+                    # Upload to Firebase
+                    upload_image_data(face_image, face_type, camera_id, timestamp, print_message)
+                    # Optionally save the image to disk (if needed)
+                    cv2.imwrite(face_image, face)
 
         previous_intensity = intensity
 
@@ -120,11 +131,13 @@ def main():
             print("Executor shut down.")
 
 if __name__ == "__main__":
-    main()
     try:
         main()
-    except KeyboardInterrupt:
         print("\nProgram interrupted by user. Exiting...")
         stop_event.set()
         # Ensure the Flask server is stopped
         os._exit(0)  # Forcefully exit the program to avoid hanging
+    except Exception as e:
+        print(f"Error in main: {e}")
+        stop_event.set()
+        os._exit(1)

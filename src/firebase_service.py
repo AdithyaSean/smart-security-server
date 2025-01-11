@@ -3,6 +3,7 @@ from firebase_admin import credentials, db
 import base64
 import os
 from dotenv import load_dotenv
+import cv2
 
 def init_firebase():
     load_dotenv()
@@ -16,25 +17,21 @@ def init_firebase():
     })
     return db.reference('faces')
 
-def upload_image_data(face_image, image_type, camera_id, timestamp, print_message):
+def upload_image_data(camera_id, image_type, image_data, face_image, timestamp, print_message):
     try:
-        with open(face_image, 'rb') as f:
-            data = {
-                'cameraId': camera_id,
-                'imageType': image_type,
-                'imageData': base64.b64encode(f.read()).decode('utf-8'),
-                'imageName': face_image,
-                'timestamp': timestamp
-            }
+        data = {
+            'cameraId': camera_id,
+            'imageType': image_type,
+            'imageData': image_data,
+            'imageName': face_image,
+            'timestamp': timestamp
+        }
         
-        # Extract the file name without the path and extension
-        file_name = os.path.splitext(os.path.basename(face_image))[0]
-        
-        # Use the file name as the key
-        ref = db.reference('faces').child(f'camera_{camera_id}').child(file_name)
+        # Use the face image path as the key
+        ref = db.reference('faces').child(f'camera_{camera_id}').child(face_image)
         ref.set(data)
-        
         print(print_message + f"Uploaded")
+        
         return True
     except Exception as e:
         print(f"Firebase upload error: {e}")
