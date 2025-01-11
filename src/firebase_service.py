@@ -20,10 +20,10 @@ def upload_image_data(face_image, image_type, camera_id, timestamp, print_messag
     try:
         with open(face_image, 'rb') as f:
             data = {
-                'camera_id': camera_id,
-                'image_type': image_type,
-                'image_data': base64.b64encode(f.read()).decode('utf-8'),
-                'image_name': face_image,
+                'cameraId': camera_id,
+                'imageType': image_type,
+                'imageData': base64.b64encode(f.read()).decode('utf-8'),
+                'imageName': face_image,
                 'timestamp': timestamp
             }
         
