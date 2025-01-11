@@ -115,8 +115,7 @@ def main():
             
             # Wait for threads to finish
             for future in futures:
-                future.result()
-            
+                future.result(timeout=5)  # Add a timeout to avoid hanging indefinitely
             print("All cameras released. Exiting...")
 
 if __name__ == "__main__":
