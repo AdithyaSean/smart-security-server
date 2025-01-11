@@ -54,7 +54,9 @@ def scan_network_for_cameras(subnet: str = "192.168.1.0/24") -> List[str]:
     cameras = []
     network = ipaddress.IPv4Network(subnet)
     
-    for ip in network.hosts():
+    for i, ip in enumerate(network.hosts()):
+        if i >= 20:
+            break
         ip_str = str(ip)
         try:
             # Try to connect to the ESP32-CAM stream port
