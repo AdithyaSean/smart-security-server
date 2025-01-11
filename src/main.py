@@ -32,13 +32,6 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
     frame_count = 0
     skip_frames = 5  # Process every 5th frame
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-    
-    # Firebase upload interval
-    upload_interval = 60  # Upload every 60 seconds
-    last_upload_time = time.time()
-
-    # Create a ThreadPoolExecutor for Firebase uploads
-    upload_executor = ThreadPoolExecutor(max_workers=2)
 
     while not stop_event.is_set():
         ret, frame = cap.read()
