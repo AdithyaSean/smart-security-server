@@ -64,17 +64,25 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
                     face = frame[y:y+h, x:x+w]
                     timestamp = int(datetime.now().strftime("%Y%m%d%H%M%S"))
                     face_image = f"faces/camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
+                    
+                    # Corrected path construction
+                    face_image = f"camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
+                    face_image_path = os.path.join("faces", face_image)
 
                     # Compress the face image in memory and convert to base64
                     _, image_encoded = cv2.imencode('.jpg', face, encode_param)
                     image_data = base64.b64encode(image_encoded).decode('utf-8')
 
                     print_message += f"Saved - {face_image} - "
+                    print_message += f"Saved - {face_image_path} - "
 
                     # Upload to Firebase
                     upload_image_data(face_image, face_type, image_data, camera_id, timestamp, print_message)
+                    upload_image_data(face_image_path, face_type, image_data, camera_id, timestamp, print_message)
+
                     # Optionally save the image to disk (if needed)
                     cv2.imwrite(face_image, face)
+                    cv2.imwrite(face_image_path, face)
 
         previous_intensity = intensity
 
