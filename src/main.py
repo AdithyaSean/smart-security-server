@@ -97,6 +97,7 @@ def main():
             print(f"Error: Could not open video stream from camera {i}")
         else:
             camera_caps[i] = cap
+            print(f"Camera {i} initialized.")
 
     # Create a thread pool
     with ThreadPoolExecutor(max_workers=2) as executor:
