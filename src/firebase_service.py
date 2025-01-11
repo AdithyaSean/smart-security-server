@@ -3,7 +3,6 @@ from firebase_admin import credentials, db
 import base64
 import os
 from dotenv import load_dotenv
-import cv2
 
 def init_firebase():
     load_dotenv()
@@ -31,7 +30,7 @@ def upload_image_data(camera_id, image_type, image_data, face_image, timestamp, 
         ref = db.reference('faces').child(f'camera_{camera_id}').child(face_image)
         ref.set(data)
         print(print_message + f"Uploaded")
-        
+
         return True
     except Exception as e:
         print(f"Firebase upload error: {e}")

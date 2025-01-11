@@ -72,7 +72,7 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
                     print_message += f"Saved - {face_image} - "
 
                     # Upload to Firebase
-                    upload_image_data(face_image, face_type, camera_id, timestamp, print_message)
+                    upload_image_data(face_image, face_type, image_data, camera_id, timestamp, print_message)
                     # Optionally save the image to disk (if needed)
                     cv2.imwrite(face_image, face)
 
