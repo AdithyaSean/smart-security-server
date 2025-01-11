@@ -59,7 +59,7 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
                 for (x, y, w, h) in faces:
                     print_message = f"Camera {camera_id} - Faces Detected - {detected_faces} - "
                     face = frame[y:y+h, x:x+w]
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
                     face_image = f"faces/camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
                     cv2.imwrite(face_image, face)
                     print_message += f"Saved - {face_image} - "
