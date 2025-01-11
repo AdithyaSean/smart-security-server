@@ -1,4 +1,4 @@
-from flask import Flask, render_template, Response
+from flask import Flask, Response
 import threading
 import socket
 import cv2
@@ -22,10 +22,6 @@ def generate_frames(camera_id):
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-@app.route('/')
-def index():
-    return render_template('index.html')
 
 @app.route('/video_feed/<int:camera_id>')
 def video_feed(camera_id):
