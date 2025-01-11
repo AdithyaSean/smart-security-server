@@ -12,7 +12,6 @@ from src.firebase_service import init_firebase, upload_image_data
 
 init_firebase()
 
-# Create necessary directories
 directories_to_create = ["faces", "secrets"]
 for directory in directories_to_create:
     os.makedirs(directory, exist_ok=True)
@@ -24,7 +23,6 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
         print(f"Error: Could not open video stream from camera {camera_id}")
         return
 
-    # Set lower resolution and frame rate
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
     cap.set(cv2.CAP_PROP_FPS, 5)
@@ -32,7 +30,7 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
     face_type = "face"
     previous_intensity = None
     frame_count = 0
-    skip_frames = 5  # Process every 5th frame
+    skip_frames = 5
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 70]
 
@@ -49,10 +47,8 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
 
         intensity = np.mean(frame)
 
-        # Store frame in shared buffer for Flask server
         put_frame(camera_id, frame)
 
-        # Check for significant intensity change
         if previous_intensity is not None and abs(intensity - previous_intensity) > 1.0:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
@@ -63,26 +59,13 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
                     print_message = f"Camera {camera_id} - Faces Detected - {detected_faces} - "
                     face = frame[y:y+h, x:x+w]
                     timestamp = int(datetime.now().strftime("%Y%m%d%H%M%S"))
-                    face_image = f"faces/camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
-                    
-                    # Corrected path construction
-                    face_image = f"camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
-                    face_image_path = os.path.join("faces", face_image)
-
-                    # Compress the face image in memory and convert to base64
+                    face_image_name = f"camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
                     _, image_encoded = cv2.imencode('.jpg', face, encode_param)
                     image_data = base64.b64encode(image_encoded).decode('utf-8')
-
-                    print_message += f"Saved - {face_image} - "
-                    print_message += f"Saved - {face_image_path} - "
-
-                    # Upload to Firebase
-                    upload_image_data(face_image, face_type, image_data, camera_id, timestamp, print_message)
-                    upload_image_data(face_image_path, face_type, image_data, camera_id, timestamp, print_message)
-
-                    # Optionally save the image to disk (if needed)
-                    cv2.imwrite(face_image, face)
-                    cv2.imwrite(face_image_path, face)
+                    print_message += f"Saved - {face_image_name} - "
+                    image_name = os.path.basename(face_image_name)
+                    upload_image_data(camera_id, face_type, image_data, image_name, timestamp, print_message)
+                    cv2.imwrite(f"faces/{face_image_name}", face)
 
         previous_intensity = intensity
 
@@ -91,9 +74,8 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
 
 def main():
     global stop_event
-    stop_event = threading.Event()  # Initialize stop_event
+    stop_event = threading.Event()
 
-    # Get camera URLs, trying last known IPs first, then scanning if necessary
     print("Getting ESP32-cam URLs...")
     camera_urls = get_camera_urls()
 
@@ -101,7 +83,6 @@ def main():
         print(f"Error: Found only {len(camera_urls)} cameras. Need at least 2.")
         return
 
-    # Populate camera_streams and initialize camera_caps
     for i, camera_url in enumerate(camera_urls[:2], 1):
         camera_streams[i] = camera_url
         cap = cv2.VideoCapture(camera_url)
@@ -111,13 +92,11 @@ def main():
             camera_caps[i] = cap
             print(f"Camera {i} initialized.")
 
-    # Create a thread pool
     with ThreadPoolExecutor(max_workers=2) as executor:
         try:
             futures = [executor.submit(process_camera, camera_url, i, stop_event) for i, camera_url in enumerate(camera_urls[:2], 1)]
             print("All cameras started.")
             
-            # Wait for KeyboardInterrupt
             while True:
                 time.sleep(0.1)
                 
@@ -125,16 +104,14 @@ def main():
             print("\nProgram interrupted by user. Shutting down...")
             stop_event.set()
             
-            # Wait for threads to finish with a timeout
             for future in futures:
                 try:
-                    future.result(timeout=10)  # Increase timeout to 10 seconds
+                    future.result(timeout=10)
                 except Exception as e:
                     print(f"Error waiting for thread: {e}")
             
             print("All cameras released. Exiting...")
         finally:
-            # Ensure the executor is shut down
             executor.shutdown(wait=True)
             print("Executor shut down.")
 
@@ -143,9 +120,9 @@ if __name__ == "__main__":
         main()
         print("\nProgram interrupted by user. Exiting...")
         stop_event.set()
-        # Ensure the Flask server is stopped
-        os._exit(0)  # Forcefully exit the program to avoid hanging
+        os._exit(0)
     except Exception as e:
         print(f"Error in main: {e}")
         stop_event.set()
+        os._exit(1)
         os._exit(1)

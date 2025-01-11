@@ -16,18 +16,27 @@ def init_firebase():
     })
     return db.reference('faces')
 
-def upload_image_data(camera_id, image_type, image_data, face_image, timestamp, print_message):
+import re
+
+def sanitize_key(key):
+    # Replace illegal characters with underscores
+    return re.sub(r'[\.\$#\[\]/]', '_', key)
+
+def upload_image_data(camera_id, image_type, image_data, image_name, timestamp, print_message):
     try:
+        # Sanitize the image_name to ensure it's a valid Firebase key
+        sanitized_image_name = sanitize_key(image_name)
+        
         data = {
             'cameraId': camera_id,
             'imageType': image_type,
             'imageData': image_data,
-            'imageName': face_image,
+            'imageName': sanitized_image_name,
             'timestamp': timestamp
         }
         
-        # Use the face image path as the key
-        ref = db.reference('faces').child(f'camera_{camera_id}').child(face_image)
+        # Use the sanitized filename as the key in Firebase
+        ref = db.reference('faces').child(sanitized_image_name)
         ref.set(data)
         print(print_message + f"Uploaded")
 
