@@ -23,21 +23,17 @@ def sanitize_key(key):
     return re.sub(r'[\.\$#\[\]/]', '_', key)
 
 def upload_image_data(camera_id, image_type, image_data, image_name, timestamp, print_message):
-    try:
-        # Sanitize the image_name to ensure it's a valid Firebase key
-        sanitized_image_name = sanitize_key(image_name)
-        
+    try:        
         data = {
             'cameraId': camera_id,
             'imageType': image_type,
             'imageData': image_data,
-            'imageName': sanitized_image_name,
+            'imageName': image_name,
             'timestamp': timestamp
         }
         
-        # Use the sanitized filename as the key in Firebase
-        ref = db.reference('faces').child(sanitized_image_name)
-        ref.set(data)
+        ref = db.reference('faces').child("camera" + str(camera_id))
+        ref.push(data)
         print(print_message + f"Uploaded")
 
         return True
