@@ -60,12 +60,11 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
                     face = frame[y:y+h, x:x+w]
                     timestamp = int(datetime.now().strftime("%Y%m%d%H%M%S"))
                     face_image_name = f"camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
-                    _, image_encoded = cv2.imencode('.jpg', face, encode_param)
-                    image_data = base64.b64encode(image_encoded).decode('utf-8')
+                    face_image_path = f"faces/{face_image_name}"
+                    cv2.imwrite(face_image_path, face)
                     print_message += f"Saved - {face_image_name} - "
                     image_name = os.path.basename(face_image_name)
-                    upload_image_data(camera_id, face_type, image_data, image_name, timestamp, print_message)
-                    cv2.imwrite(f"faces/{face_image_name}", face)
+                    upload_image_data(camera_id, face_type, face_image_path, image_name, timestamp, print_message)
 
         previous_intensity = intensity
 
