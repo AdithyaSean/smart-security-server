@@ -1,10 +1,8 @@
 import os
 import cv2
 from datetime import datetime
-import numpy as np
 import threading
 import time
-import base64
 from concurrent.futures import ThreadPoolExecutor
 from src.camera_scanner import get_camera_urls
 from src.shared_state import camera_streams, camera_caps, stop_event, put_frame
@@ -28,11 +26,9 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
     cap.set(cv2.CAP_PROP_FPS, 5)
 
     face_type = "face"
-    previous_intensity = None
     frame_count = 0
     skip_frames = 5
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 70]
 
     while not stop_event.is_set():
         ret, frame = cap.read()
@@ -45,28 +41,23 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
         if frame_count % skip_frames != 0:
             continue
 
-        intensity = np.mean(frame)
-
         put_frame(camera_id, frame)
 
-        if previous_intensity is not None and abs(intensity - previous_intensity) > 1.0:
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-            detected_faces = len(faces)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+        detected_faces = len(faces)
 
-            if detected_faces > 0:
-                for (x, y, w, h) in faces:
-                    print_message = f"Camera {camera_id} - Faces Detected - {detected_faces} - "
-                    face = frame[y:y+h, x:x+w]
-                    timestamp = int(datetime.now().strftime("%Y%m%d%H%M%S"))
-                    face_image_name = f"camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
-                    face_image_path = f"faces/{face_image_name}"
-                    cv2.imwrite(face_image_path, face)
-                    print_message += f"Saved - {face_image_name} - "
-                    image_name = os.path.basename(face_image_name)
-                    upload_image_data(camera_id, face_type, face_image_path, image_name, timestamp, print_message)
-
-        previous_intensity = intensity
+        if detected_faces > 0:
+            for (x, y, w, h) in faces:
+                print_message = f"Camera {camera_id} - Faces Detected - {detected_faces} - "
+                face = frame[y:y+h, x:x+w]
+                timestamp = int(datetime.now().strftime("%Y%m%d%H%M%S"))
+                face_image_name = f"camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
+                face_image_path = f"faces/{face_image_name}"
+                cv2.imwrite(face_image_path, face)
+                print_message += f"Saved - {face_image_name} - "
+                image_name = os.path.basename(face_image_name)
+                upload_image_data(camera_id, face_type, face_image_path, image_name, timestamp, print_message)
 
     cap.release()
     print(f"Camera {camera_id} released.")

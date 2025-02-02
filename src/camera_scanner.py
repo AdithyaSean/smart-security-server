@@ -49,7 +49,7 @@ def verify_camera_stream(url: str) -> bool:
         print(f"Error verifying camera stream: {str(e)}")
         return False
 
-def scan_network_for_cameras(subnet: str = "192.168.1.0/24") -> List[str]:
+def scan_network_for_cameras(subnet: str = "192.168.2.0/24") -> List[str]:
     """Scan the network for ESP32 cameras."""
     cameras = []
     network = ipaddress.IPv4Network(subnet)
