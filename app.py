@@ -63,9 +63,7 @@ def find_free_port(preferred_ports=[2003, 4620]):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             if s.connect_ex(('0.0.0.0', port)) != 0:
                 return port
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('0.0.0.0', 0))
-        return s.getsockname()[1]
+    return 2003  # Default fallback
 
 def start_flask_app():
     port = find_free_port()

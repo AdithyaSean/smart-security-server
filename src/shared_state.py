@@ -33,5 +33,13 @@ def put_frame(camera_id, frame):
         pass
 
 def update_sensor_data(value):
-    """Update the latest sensor reading"""
-    sensor_data['motion_detected'] = bool(value)
+    """Update sensor state from stream"""
+    try:
+        current = bool(int(value))
+        previous = sensor_data.get('motion_detected', False)
+        if current != previous:
+            sensor_data['motion_detected'] = current
+            return True
+    except ValueError:
+        pass
+    return False

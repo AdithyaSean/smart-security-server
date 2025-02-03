@@ -3,9 +3,10 @@ import cv2
 from datetime import datetime
 import threading
 import time
+import requests
 from concurrent.futures import ThreadPoolExecutor
 from src.network_scanner import get_network_devices
-from src.shared_state import camera_streams, camera_caps, sensor_addresses, sensor_data, stop_event, put_frame
+from src.shared_state import camera_streams, camera_caps, sensor_addresses, sensor_data, stop_event, put_frame, update_sensor_data
 from src.firebase_service import init_firebase, upload_image_data
 
 init_firebase()
@@ -70,6 +71,18 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
     cap.release()
     print(f"Camera {camera_id} released.")
 
+def monitor_sensor(sensor_ip: str, stop_event: threading.Event):
+    """Monitor sensor stream on port 81"""
+    while not stop_event.is_set():
+        try:
+            response = requests.get(f"http://{sensor_ip}:81/stream")
+            if response.status_code == 200:
+                if update_sensor_data(response.text):
+                    print(f"Motion detection state changed: {response.text}")
+        except:
+            pass
+        time.sleep(0.1)
+
 def main():
     global stop_event
     stop_event = threading.Event()
@@ -105,6 +118,13 @@ def main():
             futures = [executor.submit(process_camera, camera_url, i, stop_event) 
                       for i, camera_url in enumerate(devices['cameras'][:2], 1)]
             print("All cameras started.")
+            
+            # Start sensor monitoring threads
+            sensor_threads = []
+            for sensor_ip in devices['sensors']:
+                thread = threading.Thread(target=monitor_sensor, args=(sensor_ip, stop_event))
+                thread.start()
+                sensor_threads.append(thread)
             
             while True:
                 time.sleep(0.1)
