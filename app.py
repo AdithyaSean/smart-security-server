@@ -33,17 +33,16 @@ def video_feed(camera_id):
     return "Camera not found", 404
 
 @app.route('/sensor_data', methods=['POST'])
-def receive_sensor_data():
-    """Endpoint for receiving ultrasonic sensor data"""
+def sensor_data():
     try:
         data = request.get_json()
-        reading = data.get('reading')
-        if reading is not None:
-            update_sensor_data(reading, datetime.now())
-            return jsonify({'status': 'success'}), 200
-        return jsonify({'error': 'Invalid data format'}), 400
+        value = data.get('value')
+        if value is not None:
+            update_sensor_data(int(value), datetime.now())
+            return jsonify({"status": "success"}), 200
+        return jsonify({"status": "error", "message": "No value provided"}), 400
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/sensor_status')
 def get_sensor_status():
