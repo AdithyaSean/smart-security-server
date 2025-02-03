@@ -4,8 +4,8 @@ from datetime import datetime
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from src.camera_scanner import get_camera_urls
-from src.shared_state import camera_streams, camera_caps, stop_event, put_frame
+from src.network_scanner import get_network_devices
+from src.shared_state import camera_streams, camera_caps, sensor_addresses, stop_event, put_frame
 from src.firebase_service import init_firebase, upload_image_data
 
 init_firebase()
@@ -67,13 +67,23 @@ def main():
     stop_event = threading.Event()
 
     print("Getting ESP32-cam URLs...")
-    camera_urls = get_camera_urls()
+    devices = get_network_devices()
 
-    if len(camera_urls) < 2:
-        print(f"Error: Found only {len(camera_urls)} cameras. Need at least 2.")
+    # Initialize cameras
+    if len(devices['cameras']) < 2:
+        print(f"Error: Found only {len(devices['cameras'])} cameras. Need at least 2.")
         return
 
-    for i, camera_url in enumerate(camera_urls[:2], 1):
+    # Initialize sensor addresses
+    if not devices['sensors']:
+        print("Warning: No ultrasonic sensors found.")
+    else:
+        for i, sensor_ip in enumerate(devices['sensors'], 1):
+            sensor_addresses[i] = sensor_ip
+            print(f"Sensor {i} initialized at {sensor_ip}")
+
+    # Initialize camera streams
+    for i, camera_url in enumerate(devices['cameras'][:2], 1):
         camera_streams[i] = camera_url
         cap = cv2.VideoCapture(camera_url)
         if not cap.isOpened():
@@ -84,7 +94,8 @@ def main():
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         try:
-            futures = [executor.submit(process_camera, camera_url, i, stop_event) for i, camera_url in enumerate(camera_urls[:2], 1)]
+            futures = [executor.submit(process_camera, camera_url, i, stop_event) 
+                      for i, camera_url in enumerate(devices['cameras'][:2], 1)]
             print("All cameras started.")
             
             while True:

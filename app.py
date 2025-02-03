@@ -1,9 +1,10 @@
-from flask import Flask, Response
+from flask import Flask, Response, request, jsonify
 import threading
 import socket
 import cv2
 import time
-from src.shared_state import camera_streams, stop_event, get_frame
+from src.shared_state import camera_streams, stop_event, get_frame, sensor_data, update_sensor_data
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -30,6 +31,24 @@ def video_feed(camera_id):
         return Response(generate_frames(camera_id),
                         mimetype='multipart/x-mixed-replace; boundary=frame')
     return "Camera not found", 404
+
+@app.route('/sensor_data', methods=['POST'])
+def receive_sensor_data():
+    """Endpoint for receiving ultrasonic sensor data"""
+    try:
+        data = request.get_json()
+        reading = data.get('reading')
+        if reading is not None:
+            update_sensor_data(reading, datetime.now())
+            return jsonify({'status': 'success'}), 200
+        return jsonify({'error': 'Invalid data format'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/sensor_status')
+def get_sensor_status():
+    """Endpoint to check sensor status"""
+    return jsonify(sensor_data)
 
 # Find a free port for the Flask server if port 2003 or 4620 is already in use
 def find_free_port(preferred_ports=[2003, 4620]):

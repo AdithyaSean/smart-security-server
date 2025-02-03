@@ -4,12 +4,19 @@ from queue import Queue
 # Shared state for the application
 camera_streams = {}
 camera_caps = {}
+sensor_addresses = {}
 stop_event = threading.Event()
 
 # Frame buffers for each camera
 frame_queues = {
-    1: Queue(maxsize=10),  # Buffer for camera 1
-    2: Queue(maxsize=10)   # Buffer for camera 2
+    1: Queue(maxsize=10),
+    2: Queue(maxsize=10)
+}
+
+# Sensor data buffer
+sensor_data = {
+    'last_reading': 0,
+    'timestamp': None
 }
 
 def get_frame(camera_id):
@@ -24,4 +31,9 @@ def put_frame(camera_id, frame):
     try:
         frame_queues[camera_id].put_nowait(frame)
     except:
-        pass  # Drop frame if queue is full
+        pass
+
+def update_sensor_data(reading, timestamp):
+    """Update the latest sensor reading"""
+    sensor_data['last_reading'] = reading
+    sensor_data['timestamp'] = timestamp
