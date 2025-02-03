@@ -43,7 +43,7 @@ def upload_image_data(camera_id, image_type, image_path, image_name, timestamp, 
         bucket = storage.bucket()
         
         # Create storage path with timestamp for better organization
-        storage_path = f"{camera_id}/{image_name}"
+        storage_path = f"camera_{camera_id}/{image_name}"
         blob = bucket.blob(storage_path)
         
         # Upload with content type
