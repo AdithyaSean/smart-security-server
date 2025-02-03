@@ -5,3 +5,4 @@ ipaddress
 firebase-admin
 python-dotenv
 Flask
+flask-cors

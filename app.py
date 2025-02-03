@@ -6,10 +6,12 @@ import time
 from src.shared_state import camera_streams, stop_event, get_frame, sensor_data, update_sensor_data
 from datetime import datetime
 import os
+from flask_cors import CORS
 
 OPERATION_MODE = os.getenv("OPERATION_MODE", 'simulation')
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 def generate_frames(camera_id):
     while not stop_event.is_set():
@@ -36,8 +38,10 @@ def get_mode():
 def video_feed(camera_id):
     camera_url = camera_streams.get(camera_id)
     if camera_url:
-        return Response(generate_frames(camera_id),
-                        mimetype='multipart/x-mixed-replace; boundary=frame')
+        response = Response(generate_frames(camera_id),
+                          mimetype='multipart/x-mixed-replace; boundary=frame')
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
     return "Camera not found", 404
 
 @app.route('/sensor_data', methods=['POST'])
