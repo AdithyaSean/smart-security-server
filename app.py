@@ -46,7 +46,7 @@ def sensor_data():
         data = request.get_json()
         value = data.get('value')
         if value is not None:
-            update_sensor_data(int(value), datetime.now())
+            update_sensor_data(int(value))
             return jsonify({"status": "success"}), 200
         return jsonify({"status": "error", "message": "No value provided"}), 400
     except Exception as e:
@@ -57,18 +57,7 @@ def get_sensor_status():
     """Endpoint to check sensor status"""
     return jsonify(sensor_data)
 
-def get_ip_address():
-    # Get the local IP address of the machine
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = "127.0.0.1"  # Fallback to localhost
-    finally:
-        s.close()
-    return ip
-
+# Find a free port for the Flask server if port 2003 or 4620 is already in use
 def find_free_port(preferred_ports=[2003, 4620]):
     for port in preferred_ports:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -80,11 +69,6 @@ def find_free_port(preferred_ports=[2003, 4620]):
 
 def start_flask_app():
     port = find_free_port()
-    ip = get_ip_address()
-    print(f"\nStarting Flask app on: http://{ip}:{port}")
-    print(f"Video feed URLs:")
-    for camera_id in camera_streams.keys():
-        print(f" - Camera {camera_id}: http://{ip}:{port}/video_feed/{camera_id}")
     app.run(host='0.0.0.0', port=port)
 
 if __name__ == '__main__':

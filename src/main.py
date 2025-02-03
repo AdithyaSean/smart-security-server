@@ -14,6 +14,10 @@ directories_to_create = ["faces", "secrets"]
 for directory in directories_to_create:
     os.makedirs(directory, exist_ok=True)
 
+def get_sensor_trigger_status():
+    """Check if motion is detected"""
+    return sensor_data.get('motion_detected', False)
+
 def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event):
     camera_streams[camera_id] = camera_url
     cap = cv2.VideoCapture(camera_url)
@@ -45,59 +49,26 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
         # Always put frame in queue for live viewing
         put_frame(camera_id, frame)
 
-        # Check sensor trigger
-        sensor_trigger = get_sensor_trigger_status()
-        current_time = time.time()
-
-        # Start or extend recording if sensor is triggered
-        if sensor_trigger:
-            recording_active = True
-            recording_start_time = current_time
-            print(f"Motion detected! Starting recording on camera {camera_id}")
-
-        # Process frames only if recording is active
-        if recording_active:
-            # Check if recording duration has elapsed
-            if current_time - recording_start_time > RECORDING_DURATION:
-                recording_active = False
-                print(f"Recording stopped on camera {camera_id}")
-                continue
-
+        # Only process if motion detected
+        if get_sensor_trigger_status():
             frame_count += 1
-            if frame_count % skip_frames != 0:
-                continue
-
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-            detected_faces = len(faces)
-
-            if detected_faces > 0:
-                for (x, y, w, h) in faces:
-                    print_message = f"Camera {camera_id} - Faces Detected - {detected_faces} - "
-                    face = frame[y:y+h, x:x+w]
+            if frame_count % skip_frames == 0:
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+                
+                if len(faces) > 0:
                     timestamp = int(datetime.now().strftime("%Y%m%d%H%M%S"))
-                    face_image_name = f"camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
-                    face_image_path = f"faces/{face_image_name}"
-                    cv2.imwrite(face_image_path, face)
-                    print_message += f"Saved - {face_image_name} - "
-                    image_name = os.path.basename(face_image_name)
-                    upload_image_data(camera_id, face_type, face_image_path, image_name, timestamp, print_message)
+                    for (x, y, w, h) in faces:
+                        face = frame[y:y+h, x:x+w]
+                        face_image_name = f"camera_{camera_id}_time_{timestamp}.jpg"
+                        face_image_path = f"faces/{face_image_name}"
+                        cv2.imwrite(face_image_path, face)
+                        upload_image_data(camera_id, "face", face_image_path, face_image_name, timestamp, f"Camera {camera_id} - Face Detected - ")
         
         time.sleep(0.01)  # Small delay to prevent CPU overload
 
     cap.release()
     print(f"Camera {camera_id} released.")
-
-def get_sensor_trigger_status():
-    """Check if the ultrasonic sensor has detected motion"""
-    current_time = time.time()
-    sensor_timestamp = sensor_data.get('timestamp')
-    
-    if sensor_timestamp is None:
-        return False
-    
-    # Consider the sensor triggered if the last reading was within the last 2 seconds
-    return (current_time - sensor_timestamp.timestamp()) < 2.0
 
 def main():
     global stop_event
