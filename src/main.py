@@ -5,7 +5,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from src.network_scanner import get_network_devices
-from src.shared_state import camera_streams, camera_caps, sensor_addresses, stop_event, put_frame
+from src.shared_state import camera_streams, camera_caps, sensor_addresses, sensor_data, stop_event, put_frame
 from src.firebase_service import init_firebase, upload_image_data
 
 init_firebase()
@@ -29,6 +29,11 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
     frame_count = 0
     skip_frames = 5
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    
+    # Add recording state variables
+    recording_active = False
+    recording_start_time = None
+    RECORDING_DURATION = 10  # Record for 10 seconds after trigger
 
     while not stop_event.is_set():
         ret, frame = cap.read()
@@ -37,30 +42,62 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
             time.sleep(1)
             continue
 
-        frame_count += 1
-        if frame_count % skip_frames != 0:
-            continue
-
+        # Always put frame in queue for live viewing
         put_frame(camera_id, frame)
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-        detected_faces = len(faces)
+        # Check sensor trigger
+        sensor_trigger = get_sensor_trigger_status()
+        current_time = time.time()
 
-        if detected_faces > 0:
-            for (x, y, w, h) in faces:
-                print_message = f"Camera {camera_id} - Faces Detected - {detected_faces} - "
-                face = frame[y:y+h, x:x+w]
-                timestamp = int(datetime.now().strftime("%Y%m%d%H%M%S"))
-                face_image_name = f"camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
-                face_image_path = f"faces/{face_image_name}"
-                cv2.imwrite(face_image_path, face)
-                print_message += f"Saved - {face_image_name} - "
-                image_name = os.path.basename(face_image_name)
-                upload_image_data(camera_id, face_type, face_image_path, image_name, timestamp, print_message)
+        # Start or extend recording if sensor is triggered
+        if sensor_trigger:
+            recording_active = True
+            recording_start_time = current_time
+            print(f"Motion detected! Starting recording on camera {camera_id}")
+
+        # Process frames only if recording is active
+        if recording_active:
+            # Check if recording duration has elapsed
+            if current_time - recording_start_time > RECORDING_DURATION:
+                recording_active = False
+                print(f"Recording stopped on camera {camera_id}")
+                continue
+
+            frame_count += 1
+            if frame_count % skip_frames != 0:
+                continue
+
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+            detected_faces = len(faces)
+
+            if detected_faces > 0:
+                for (x, y, w, h) in faces:
+                    print_message = f"Camera {camera_id} - Faces Detected - {detected_faces} - "
+                    face = frame[y:y+h, x:x+w]
+                    timestamp = int(datetime.now().strftime("%Y%m%d%H%M%S"))
+                    face_image_name = f"camera_{camera_id}_time_{timestamp}_frame_{frame_count}.jpg"
+                    face_image_path = f"faces/{face_image_name}"
+                    cv2.imwrite(face_image_path, face)
+                    print_message += f"Saved - {face_image_name} - "
+                    image_name = os.path.basename(face_image_name)
+                    upload_image_data(camera_id, face_type, face_image_path, image_name, timestamp, print_message)
+        
+        time.sleep(0.01)  # Small delay to prevent CPU overload
 
     cap.release()
     print(f"Camera {camera_id} released.")
+
+def get_sensor_trigger_status():
+    """Check if the ultrasonic sensor has detected motion"""
+    current_time = time.time()
+    sensor_timestamp = sensor_data.get('timestamp')
+    
+    if sensor_timestamp is None:
+        return False
+    
+    # Consider the sensor triggered if the last reading was within the last 2 seconds
+    return (current_time - sensor_timestamp.timestamp()) < 2.0
 
 def main():
     global stop_event

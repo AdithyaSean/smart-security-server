@@ -16,7 +16,8 @@ frame_queues = {
 # Sensor data buffer
 sensor_data = {
     'last_reading': 0,
-    'timestamp': None
+    'timestamp': None,
+    'motion_detected': False
 }
 
 def get_frame(camera_id):
@@ -37,3 +38,4 @@ def update_sensor_data(reading, timestamp):
     """Update the latest sensor reading"""
     sensor_data['last_reading'] = reading
     sensor_data['timestamp'] = timestamp
+    sensor_data['motion_detected'] = True
