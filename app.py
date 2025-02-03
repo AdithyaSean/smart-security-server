@@ -5,6 +5,9 @@ import cv2
 import time
 from src.shared_state import camera_streams, stop_event, get_frame, sensor_data, update_sensor_data
 from datetime import datetime
+import os
+
+OPERATION_MODE = os.getenv("OPERATION_MODE", 'simulation')
 
 app = Flask(__name__)
 
@@ -23,6 +26,11 @@ def generate_frames(camera_id):
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        
+@app.route('/mode')
+def get_mode():
+    """Endpoint to check current operation mode"""
+    return jsonify({"mode": OPERATION_MODE})
 
 @app.route('/video_feed/<int:camera_id>')
 def video_feed(camera_id):

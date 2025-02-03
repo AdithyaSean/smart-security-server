@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Default mode is simulation
+MODE=${1:-simulation}
+
 # Check if the virtual environment exists
 if [ ! -d ".venv" ]; then
     echo "Creating virtual environment..."
@@ -14,6 +17,9 @@ fi
 
 # Set PYTHONPATH to include the src directory
 export PYTHONPATH="${PYTHONPATH}:$(pwd)/src"
+
+# Export the mode as an environment variable
+export OPERATION_MODE=$MODE
 
 # Run the Flask application
 python app.py
