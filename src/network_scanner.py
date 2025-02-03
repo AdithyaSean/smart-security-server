@@ -6,6 +6,7 @@ import time
 import json
 import os
 import dotenv
+import requests
 
 dotenv.load_dotenv()
 
@@ -56,13 +57,22 @@ def verify_camera_stream(url: str) -> bool:
 def verify_ultrasonic_sensor(ip: str, port: int = 2003) -> bool:
     """Verify that the ultrasonic sensor is responding."""
     try:
+        # First check if device responds on port 2003
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1)
         result = sock.connect_ex((ip, port))
         sock.close()
-        return result == 0
+
+        if result == 0:
+            # Try a GET request to verify it's the sonar sensor
+            url = f"http://{ip}:{port}/mode"
+            response = requests.get(url, timeout=1)
+            if response.status_code == 200:
+                print(f"Found sonar sensor at {ip}:{port}")
+                return True
+        return False
     except Exception as e:
-        print(f"Error verifying sensor: {str(e)}")
+        print(f"Error verifying sensor at {ip}: {str(e)}")
         return False
 
 def scan_network_for_devices(subnet: str = "192.168.2.0/24") -> Dict[str, List[str]]:
@@ -74,9 +84,16 @@ def scan_network_for_devices(subnet: str = "192.168.2.0/24") -> Dict[str, List[s
     for i, ip in enumerate(network.hosts()):
         if i >= 20:  # Limit scan to first 20 addresses
             break
+            
         ip_str = str(ip)
+        print(f"Scanning {ip_str}...")
         
-        # Check for cameras
+        # Check for sonar sensor first
+        if verify_ultrasonic_sensor(ip_str):
+            sensors.append(ip_str)
+            continue # Skip camera check if sensor found
+            
+        # Then check for cameras
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(0.5)
@@ -85,16 +102,9 @@ def scan_network_for_devices(subnet: str = "192.168.2.0/24") -> Dict[str, List[s
                 if verify_camera_stream(url):
                     cameras.append(url)
             sock.close()
-        except Exception:
-            pass
-
-        # Check for ultrasonic sensors
-        if verify_ultrasonic_sensor(ip_str):
-            sensors.append(ip_str)
+        except Exception as e:
+            print(f"Error scanning {ip_str}: {str(e)}")
             
-        if len(cameras) >= 2 and len(sensors) >= 1:
-            break
-    
     return {'cameras': cameras, 'sensors': sensors}
 
 def get_network_devices():
