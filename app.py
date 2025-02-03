@@ -57,7 +57,18 @@ def get_sensor_status():
     """Endpoint to check sensor status"""
     return jsonify(sensor_data)
 
-# Find a free port for the Flask server if port 2003 or 4620 is already in use
+def get_ip_address():
+    # Get the local IP address of the machine
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"  # Fallback to localhost
+    finally:
+        s.close()
+    return ip
+
 def find_free_port(preferred_ports=[2003, 4620]):
     for port in preferred_ports:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -69,7 +80,11 @@ def find_free_port(preferred_ports=[2003, 4620]):
 
 def start_flask_app():
     port = find_free_port()
-    print(f"Server is running on http://localhost:{port}")
+    ip = get_ip_address()
+    print(f"\nStarting Flask app on: http://{ip}:{port}")
+    print(f"Video feed URLs:")
+    for camera_id in camera_streams.keys():
+        print(f" - Camera {camera_id}: http://{ip}:{port}/video_feed/{camera_id}")
     app.run(host='0.0.0.0', port=port)
 
 if __name__ == '__main__':
