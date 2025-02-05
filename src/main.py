@@ -30,15 +30,9 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
     cap.set(cv2.CAP_PROP_FPS, 5)
 
-    face_type = "face"
     frame_count = 0
     skip_frames = 5
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-    
-    # Add recording state variables
-    recording_active = False
-    recording_start_time = None
-    RECORDING_DURATION = 10  # Record for 10 seconds after trigger
 
     while not stop_event.is_set():
         ret, frame = cap.read()
