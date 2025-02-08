@@ -77,9 +77,6 @@ The system provides a Flask-based web interface with the following features:
 
 ### API Endpoints
 - `/video_feed/<camera_id>`: Live video stream
-- `/status`: System status and health check
-- `/config`: System configuration management
-- `/events`: Security event history
 
 ### app.py Features
 - Flask web server implementation

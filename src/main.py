@@ -65,58 +65,60 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
     cap.release()
     print(f"Camera {camera_id} released.")
 
-def monitor_sensor(sensor_ip: str, stop_event: threading.Event):
-    """Monitor sensor stream on port 81"""
+def monitor_sensor(sensor: dict, stop_event: threading.Event):
+    """Monitor sensor stream"""
     while not stop_event.is_set():
         try:
-            response = requests.get(f"http://{sensor_ip}:81/stream")
+            response = requests.get(f"http://{sensor['ip']}:81/stream")
             if response.status_code == 200:
                 if update_sensor_data(response.text):
-                    print(f"Motion detection state changed: {response.text}")
-        except:
-            pass
+                    print(f"Motion detection state changed: {response.text} from sensor {sensor['name']} ({sensor['mac']})")
+        except Exception as e:
+            print(f"Error reading from sensor {sensor['name']} ({sensor['mac']}): {str(e)}")
         time.sleep(0.1)
 
 def main():
     global stop_event
     stop_event = threading.Event()
 
-    print("Getting ESP32-cam URLs...")
+    print("Getting device information using MAC addresses...")
     devices = get_network_devices()
 
     # Initialize cameras
-    if len(devices['cameras']) < 2:
-        print(f"Error: Found only {len(devices['cameras'])} cameras. Need at least 2.")
+    cameras = devices['cameras']
+    if len(cameras) < 1:  # Changed from 2 to 1 since we have one ESP32CAM
+        print(f"Error: No cameras found.")
         return
 
-    # Initialize sensor addresses
-    if not devices['sensors']:
-        print("Warning: No ultrasonic sensors found.")
-    else:
-        for i, sensor_ip in enumerate(devices['sensors'], 1):
-            sensor_addresses[i] = sensor_ip
-            print(f"Sensor {i} initialized at {sensor_ip}")
-
     # Initialize camera streams
-    for i, camera_url in enumerate(devices['cameras'][:2], 1):
-        camera_streams[i] = camera_url
-        cap = cv2.VideoCapture(camera_url)
+    for i, camera in enumerate(cameras, 1):
+        camera_streams[i] = camera['url']
+        cap = cv2.VideoCapture(camera['url'])
         if not cap.isOpened():
-            print(f"Error: Could not open video stream from camera {i}")
+            print(f"Error: Could not open video stream from camera {camera['name']} ({camera['mac']})")
         else:
             camera_caps[i] = cap
-            print(f"Camera {i} initialized.")
+            print(f"Camera {camera['name']} initialized at {camera['ip']} (MAC: {camera['mac']})")
+
+    # Initialize sensor addresses
+    sensors = devices['sensors']
+    if not sensors:
+        print("Warning: No ultrasonic sensors found.")
+    else:
+        for i, sensor in enumerate(sensors, 1):
+            sensor_addresses[i] = sensor['ip']
+            print(f"Sensor {sensor['name']} initialized at {sensor['ip']} (MAC: {sensor['mac']})")
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         try:
-            futures = [executor.submit(process_camera, camera_url, i, stop_event) 
-                      for i, camera_url in enumerate(devices['cameras'][:2], 1)]
+            futures = [executor.submit(process_camera, camera['url'], i, stop_event) 
+                      for i, camera in enumerate(cameras, 1)]
             print("All cameras started.")
             
             # Start sensor monitoring threads
             sensor_threads = []
-            for sensor_ip in devices['sensors']:
-                thread = threading.Thread(target=monitor_sensor, args=(sensor_ip, stop_event))
+            for sensor in sensors:
+                thread = threading.Thread(target=monitor_sensor, args=(sensor, stop_event))
                 thread.start()
                 sensor_threads.append(thread)
             

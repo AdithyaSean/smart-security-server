@@ -61,13 +61,17 @@ def get_sensor_status():
     """Endpoint to check sensor status"""
     return jsonify(sensor_data)
 
-# Find a free port for the Flask server if port 2003 or 4620 is already in use
-def find_free_port(preferred_ports=[2003, 4620]):
-    for port in preferred_ports:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            if s.connect_ex(('0.0.0.0', port)) != 0:
-                return port
-    return 2003  # Default fallback
+# Find a free port for the Flask server
+def find_free_port():
+    # Use just port 2003 since this server is now identified by MAC address
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        if s.connect_ex(('0.0.0.0', 2003)) != 0:
+            return 2003
+        # If 2003 is not available, try a random port
+        s.bind(('0.0.0.0', 0))
+        s.listen(1)
+        port = s.getsockname()[1]
+        return port
 
 def start_flask_app():
     port = find_free_port()
