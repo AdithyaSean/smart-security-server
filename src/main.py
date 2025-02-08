@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from src.network_scanner import get_network_devices
 from src.shared_state import camera_streams, camera_caps, sensor_addresses, sensor_data, stop_event, put_frame, update_sensor_data
 from src.firebase_service import init_firebase, upload_image_data
+from src.discovery_service import DiscoveryService
 
 init_firebase()
 
@@ -81,6 +82,11 @@ def main():
     global stop_event
     stop_event = threading.Event()
 
+    print("Initializing discovery service...")
+    discovery_service = DiscoveryService()
+    print("Starting discovery service...")
+    discovery_service.start()
+
     print("Getting device information using MAC addresses...")
     devices = get_network_devices()
 
@@ -137,6 +143,8 @@ def main():
             
             print("All cameras released. Exiting...")
         finally:
+            discovery_service.stop()
+            print("Discovery service stopped.")
             executor.shutdown(wait=True)
             print("Executor shut down.")
 
