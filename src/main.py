@@ -1,5 +1,6 @@
 import os
 import cv2
+import json
 from datetime import datetime
 import threading
 import time
@@ -22,13 +23,25 @@ def get_sensor_trigger_status():
     """Check if motion is detected"""
     return sensor_data.get('motion_detected', False)
 
-def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event, face_service: FaceService):
-    camera_streams[camera_id] = camera_url
-    cap = cv2.VideoCapture(camera_url)
-    if not cap.isOpened():
-        print(f"Error: Could not open video stream from camera {camera_id}")
+def process_camera(camera: dict, camera_id: int, stop_event: threading.Event, face_service: FaceService):
+    print(f"Processing camera {camera_id} with info: {json.dumps(camera, indent=2)}")
+    camera_streams[camera_id] = camera
+    
+    # Construct camera URL using original camera stream path
+    try:
+        camera_url = f"http://{camera['ip']}:{camera['port']}{camera['stream_path']}"
+        print(f"Opening camera stream at: {camera_url}")
+    except KeyError as e:
+        print(f"Error constructing URL - missing key: {e}")
+        print(f"Available keys: {list(camera.keys())}")
         return
 
+    cap = cv2.VideoCapture(camera_url)
+    if not cap.isOpened():
+        print(f"Error: Could not open video stream from camera {camera_id} at URL: {camera_url}")
+        return
+
+    print(f"Successfully opened camera {camera_id} stream")
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
     cap.set(cv2.CAP_PROP_FPS, 5)
@@ -109,41 +122,30 @@ def main():
 
     # Initialize cameras
     cameras = devices['cameras']
+    print(f"\nFound cameras: {json.dumps(cameras, indent=2)}")
+    
     if len(cameras) < 1:  # Changed from 2 to 1 since we have one ESP32CAM
         print(f"Error: No cameras found.")
         return
 
-    # Initialize camera streams
-    for i, camera in enumerate(cameras, 1):
-        camera_streams[i] = camera['url']
-        cap = cv2.VideoCapture(camera['url'])
-        if not cap.isOpened():
-            print(f"Error: Could not open video stream from camera {camera['name']} ({camera['mac']})")
-        else:
-            camera_caps[i] = cap
-            print(f"Camera {camera['name']} initialized at {camera['ip']} (MAC: {camera['mac']})")
-
-    # Initialize sensor addresses
-    sensors = devices['sensors']
-    if not sensors:
-        print("Warning: No ultrasonic sensors found.")
-    else:
-        for i, sensor in enumerate(sensors, 1):
-            sensor_addresses[i] = sensor['ip']
-            print(f"Sensor {sensor['name']} initialized at {sensor['ip']} (MAC: {sensor['mac']})")
-
     with ThreadPoolExecutor(max_workers=2) as executor:
         try:
-            futures = [executor.submit(process_camera, camera['url'], i, stop_event, face_service) 
+            futures = [executor.submit(process_camera, camera, i, stop_event, face_service) 
                       for i, camera in enumerate(cameras, 1)]
             print("All cameras started.")
             
-            # Start sensor monitoring threads
-            sensor_threads = []
-            for sensor in sensors:
-                thread = threading.Thread(target=monitor_sensor, args=(sensor, stop_event))
-                thread.start()
-                sensor_threads.append(thread)
+            # Initialize sensor addresses
+            sensors = devices['sensors']
+            if not sensors:
+                print("Warning: No ultrasonic sensors found.")
+            else:
+                # Start sensor monitoring threads
+                sensor_threads = []
+                for sensor in sensors:
+                    thread = threading.Thread(target=monitor_sensor, args=(sensor, stop_event))
+                    thread.start()
+                    sensor_threads.append(thread)
+                    print(f"Started monitoring sensor: {sensor['name']} at {sensor['ip']}")
             
             while True:
                 time.sleep(0.1)
@@ -172,7 +174,6 @@ if __name__ == "__main__":
         stop_event.set()
         os._exit(0)
     except Exception as e:
-        print(f"Error in main: {e}")
+        print(f"Error in main: {str(e)}")
         stop_event.set()
-        os._exit(1)
         os._exit(1)

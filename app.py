@@ -41,13 +41,17 @@ def get_mode():
 
 @app.route('/video_feed/<int:camera_id>')
 def video_feed(camera_id):
-    camera_url = camera_streams.get(camera_id)
-    if camera_url:
+    camera = camera_streams.get(camera_id)
+    if camera:
+        print(f"Serving video feed for camera {camera_id}: {camera.get('name', 'Unknown')}")
         response = Response(generate_frames(camera_id),
                           mimetype='multipart/x-mixed-replace; boundary=frame')
         response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Cache-Control', 'no-cache, no-store, must-revalidate')
+        response.headers.add('Pragma', 'no-cache')
+        response.headers.add('Expires', '0')
         return response
-    return "Camera not found", 404
+    return f"Camera {camera_id} not found", 404
 
 @app.route('/sensor_data', methods=['POST'])
 def sensor_data():
