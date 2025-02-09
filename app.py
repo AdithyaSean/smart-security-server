@@ -15,19 +15,24 @@ CORS(app)  # Enable CORS for all routes
 
 def generate_frames(camera_id):
     while not stop_event.is_set():
-        frame = get_frame(camera_id)
-        if frame is None:
-            time.sleep(0.01)  # Wait briefly if no frame is available
+        try:
+            frame = get_frame(camera_id)
+            if frame is None:
+                time.sleep(0.01)  # Wait briefly if no frame is available
+                continue
+                
+            ret, buffer = cv2.imencode('.jpg', frame)
+            if not ret:
+                print(f"Failed to encode frame from camera {camera_id}")
+                continue
+                
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        except Exception as e:
+            print(f"Error generating frame for camera {camera_id}: {str(e)}")
+            time.sleep(0.1)  # Wait a bit longer on error
             continue
-            
-        ret, buffer = cv2.imencode('.jpg', frame)
-        if not ret:
-            print(f"Failed to encode frame from camera {camera_id}")
-            continue
-            
-        frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
         
 @app.route('/mode')
 def get_mode():
@@ -74,8 +79,9 @@ def find_free_port():
         return port
 
 def start_flask_app():
-    port = find_free_port()
-    app.run(host='0.0.0.0', port=port)
+    port = 2003  # Use fixed port 2003 to match discovery service
+    print(f"Starting Flask server on port {port}")
+    app.run(host='0.0.0.0', port=port, threaded=True)
 
 if __name__ == '__main__':
     # Start Flask app in a separate thread

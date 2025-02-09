@@ -25,15 +25,18 @@ class DiscoveryService:
     def register_camera(self, camera_info: Dict):
         """Register a camera as an mDNS service."""
         service_name = f"camera-{camera_info['name']}._smartcam._tcp.local."
+        # Convert numeric camera ID from name (e.g. "esp32cam 1" -> "1")
+        camera_id = camera_info['name'].split()[-1]
+        video_feed_path = f"/video_feed/{camera_id}"
         info = ServiceInfo(
             "_smartcam._tcp.local.",
             service_name,
             port=self.port,
             properties={
                 'name': camera_info['name'].encode('utf-8'),
-                'path': camera_info['stream_path'].encode('utf-8')
+                'path': video_feed_path.encode('utf-8')
             },
-            addresses=[socket.inet_aton(camera_info['ip'])]
+            addresses=[socket.inet_aton(self._get_local_ip())]  # Use server IP instead of camera IP
         )
         self.zeroconf.register_service(info)
         self.services.append(info)
@@ -44,11 +47,10 @@ class DiscoveryService:
         
         # Register each camera as a service
         for camera in discovered_devices['cameras']:
-            stream_path = f"/video_feed/{camera['name'].split('-')[-1]}"
             camera_info = {
                 'name': camera['name'],
-                'ip': camera['ip'],
-                'stream_path': stream_path
+                'ip': camera['ip'],  # This is needed for internal video capture
+                'stream_path': camera['stream_path']  # Use original stream path for internal capture
             }
             self.register_camera(camera_info)
 

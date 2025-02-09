@@ -6,4 +6,4 @@ numpy>=1.26.0
 zeroconf>=0.131.0
 opencv-contrib-python>=4.9.0.80
 face-recognition>=1.3.0
-dotenv
+python-dotenv
