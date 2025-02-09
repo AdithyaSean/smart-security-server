@@ -30,6 +30,13 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Function to check if Python packages are installed
+check_python_packages() {
+    source .venv/bin/activate 2>/dev/null || return 1
+    pip freeze | grep -q "^flask==\|^opencv-contrib-python==\|^face-recognition==" || return 1
+    return 0
+}
+
 # Function to install system packages based on the platform
 install_system_packages() {
     if command_exists apt-get; then
@@ -87,27 +94,35 @@ install_system_packages() {
     fi
 }
 
-# Check and install system packages
-echo "Checking system dependencies..."
-install_system_packages
+# Check if we need to install/reinstall dependencies
+if [ ! -d ".venv" ] || ! check_python_packages; then
+    echo "Virtual environment not found or packages missing. Setting up dependencies..."
+    
+    # Check and install system packages
+    echo "Checking system dependencies..."
+    install_system_packages
 
-# Clean up any existing virtual environment
-rm -rf .venv
+    # Clean up any existing virtual environment
+    rm -rf .venv
 
-# Create new virtual environment
-echo "Creating virtual environment..."
-# Use Python 3.12 if available, otherwise fallback to Python 3
-if command_exists python3.12; then
-    python3.12 -m venv .venv --system-site-packages
+    # Create new virtual environment
+    echo "Creating virtual environment..."
+    # Use Python 3.12 if available, otherwise fallback to Python 3
+    if command_exists python3.12; then
+        python3.12 -m venv .venv --system-site-packages
+    else
+        python3 -m venv .venv --system-site-packages
+    fi
+    source .venv/bin/activate
+
+    # Upgrade pip and install Python packages
+    echo "Installing Python dependencies..."
+    python -m pip install --upgrade pip
+    python -m pip install -r requirements.txt
 else
-    python3 -m venv .venv --system-site-packages
+    echo "Dependencies already installed. Activating virtual environment..."
+    source .venv/bin/activate
 fi
-source .venv/bin/activate
-
-# Upgrade pip and install Python packages
-echo "Installing Python dependencies..."
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
 
 # Load environment variables from .env
 if [ -f .env ]; then
