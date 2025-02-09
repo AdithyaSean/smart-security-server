@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MAC_CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'secrets/mac_address_config.json')
+MAC_CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'src/secrets/mac_address_config.json')
 
 def load_mac_config() -> Dict:
     """Load the MAC address configuration from file."""
