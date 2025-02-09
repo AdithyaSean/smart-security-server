@@ -1,7 +1,10 @@
 import firebase_admin
-from firebase_admin import credentials, db, storage
+from firebase_admin import credentials, db, storage, messaging, get_app
 import os
 from dotenv import load_dotenv
+
+# Topic for face detection notifications
+FACE_NOTIFICATION_TOPIC = 'unknown_faces'
 
 def init_firebase():
     load_dotenv()
@@ -16,10 +19,12 @@ def init_firebase():
         # Check if already initialized
         if not firebase_admin._apps:
             cred = credentials.Certificate(cred_path)
-            firebase_admin.initialize_app(cred, {
+            app = firebase_admin.initialize_app(cred, {
                 'databaseURL': db_url,
                 'storageBucket': storage_bucket
             })
+        else:
+            app = get_app()
         
         # Verify storage bucket connection
         bucket = storage.bucket()
@@ -27,13 +32,40 @@ def init_firebase():
             raise ValueError("Failed to connect to Firebase Storage bucket")
             
         print(f"Firebase initialized successfully with bucket: {storage_bucket}")
-        return db.reference('faces')
+        return app
         
     except Exception as e:
         print(f"Firebase initialization error: {str(e)}")
         raise
 
-def upload_image_data(camera_id, image_type, image_path, image_name, timestamp, print_message):
+def get_firebase_app():
+    """Get the Firebase app instance, initializing if necessary"""
+    try:
+        return get_app()
+    except ValueError:
+        return init_firebase()
+
+def send_notification(title: str, body: str, image_url: str = None):
+    """Send FCM notification to subscribed devices"""
+    try:
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+            ),
+            data={
+                'image_url': image_url if image_url else ''
+            },
+            topic=FACE_NOTIFICATION_TOPIC,
+        )
+        response = messaging.send(message)
+        print(f"Notification sent successfully: {response}")
+        return True
+    except Exception as e:
+        print(f"Error sending notification: {e}")
+        return False
+
+def upload_image_data(camera_id, image_type, image_path, image_name, timestamp, print_message, notify=False):
     try:
         # Verify file exists
         if not os.path.exists(image_path):
@@ -73,6 +105,14 @@ def upload_image_data(camera_id, image_type, image_path, image_name, timestamp, 
         ref.push(data)
         
         print(f"{print_message}Uploaded to: {storage_path}")
+        
+        # Send notification if requested
+        if notify:
+            send_notification(
+                "Unknown Face Detected",
+                f"An unknown face was detected by Camera {camera_id}",
+                image_url
+            )
         
         # Clean up local file
         os.remove(image_path)

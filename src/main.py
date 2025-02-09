@@ -7,10 +7,12 @@ import requests
 from concurrent.futures import ThreadPoolExecutor
 from src.network_scanner import get_network_devices
 from src.shared_state import camera_streams, camera_caps, sensor_addresses, sensor_data, stop_event, put_frame, update_sensor_data
-from src.firebase_service import init_firebase, upload_image_data
+from src.firebase_service import init_firebase, upload_image_data, get_firebase_app
 from src.discovery_service import DiscoveryService
+from src.face_service import FaceService
 
-init_firebase()
+# Initialize Firebase and get app instance
+firebase_app = init_firebase()
 
 directories_to_create = ["faces", "secrets"]
 for directory in directories_to_create:
@@ -20,7 +22,7 @@ def get_sensor_trigger_status():
     """Check if motion is detected"""
     return sensor_data.get('motion_detected', False)
 
-def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event):
+def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event, face_service: FaceService):
     camera_streams[camera_id] = camera_url
     cap = cv2.VideoCapture(camera_url)
     if not cap.isOpened():
@@ -59,7 +61,20 @@ def process_camera(camera_url: str, camera_id: int, stop_event: threading.Event)
                         face_image_name = f"camera_{camera_id}_time_{timestamp}.jpg"
                         face_image_path = f"faces/{face_image_name}"
                         cv2.imwrite(face_image_path, face)
-                        upload_image_data(camera_id, "face", face_image_path, face_image_name, timestamp, f"Camera {camera_id} - Face Detected - ")
+                        
+                        # Check if face is unknown
+                        is_unknown = face_service.is_face_unknown(face)
+                        
+                        # Upload image with notification if unknown
+                        upload_image_data(
+                            camera_id, 
+                            "face", 
+                            face_image_path, 
+                            face_image_name, 
+                            timestamp, 
+                            f"Camera {camera_id} - {'Unknown' if is_unknown else ''} Face Detected - ",
+                            notify=is_unknown
+                        )
         
         time.sleep(0.01)  # Small delay to prevent CPU overload
 
@@ -79,6 +94,8 @@ def monitor_sensor(sensor: dict, stop_event: threading.Event):
         time.sleep(0.1)
 
 def main():
+    # Initialize face service with Firebase app
+    face_service = FaceService(get_firebase_app())
     global stop_event
     stop_event = threading.Event()
 
@@ -117,7 +134,7 @@ def main():
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         try:
-            futures = [executor.submit(process_camera, camera['url'], i, stop_event) 
+            futures = [executor.submit(process_camera, camera['url'], i, stop_event, face_service) 
                       for i, camera in enumerate(cameras, 1)]
             print("All cameras started.")
             
